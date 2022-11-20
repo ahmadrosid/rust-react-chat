@@ -6,8 +6,12 @@ use std::{
     }, vec,
 };
 
+use serde_json::json;
+
 use actix::prelude::*;
 use rand::{self, rngs::ThreadRng, Rng};
+
+use crate::session;
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -88,7 +92,6 @@ impl Handler<Connect> for ChatServer {
     type Result = usize;
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
-        self.send_message("main", "Someone joined rooms", 0);
         let id = self.rng.gen::<usize>();
         self.sessions.insert(id, msg.addr);
         self.rooms
@@ -96,7 +99,11 @@ impl Handler<Connect> for ChatServer {
             .or_insert_with(HashSet::new)
             .insert(id);
         let count = self.visitor_count.fetch_add(1, Ordering::SeqCst);
-        self.send_message("main", &format!("Visitors {count}"), 0);
+        self.send_message("main", &json!({
+            "visitor": count,
+            "value": vec![format!("{}", id)],
+            "chat_type": session::ChatType::CONNECT
+        }).to_string(), 0);
         id
     }
 }
@@ -115,7 +122,11 @@ impl Handler<Disconnect> for ChatServer {
         }
 
         for room in rooms {
-            self.send_message(&room, "Someone disconnected", 0);
+            self.send_message("main", &json!({
+                "room": room,
+                "value": vec![format!("Someone disconnect!")],
+                "chat_type": session::ChatType::DISCONNECT
+            }).to_string(), 0);
         }
     }
 }
@@ -154,7 +165,11 @@ impl Handler<Join> for ChatServer {
         }
 
         for room in rooms {
-            self.send_message(&room, "Someone disconnected", 0);
+            self.send_message(&room, &json!({
+                "room": room,
+                "value": vec![format!("Someone disconnect!")],
+                "chat_type": session::ChatType::DISCONNECT
+            }).to_string(), 0);
         }
 
         self.rooms

@@ -2,12 +2,12 @@ use std::time::{Duration, Instant};
 
 use actix::prelude::*;
 use actix_web_actors::ws;
+use serde::Serialize;
 
 use crate::server;
 
 const HEARBET: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
-
 
 #[derive(Debug)]
 pub struct WsChatSession {
@@ -16,6 +16,22 @@ pub struct WsChatSession {
     pub room: String,
     pub name: Option<String>,
     pub addr: Addr<server::ChatServer>,
+}
+
+#[derive(Serialize)]
+pub enum ChatType {
+    STATUS,
+    TYPING,
+    TEXT,
+    CONNECT,
+    DISCONNECT,
+}
+
+#[derive(Serialize)]
+struct ChatMessage {
+    pub chat_type: ChatType,
+    pub value: Vec<String>,
+    pub id: usize,
 }
 
 impl Actor for WsChatSession {
@@ -84,9 +100,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                                 .then(|res, _, ctx| {
                                     match res {
                                         Ok(rooms) => {
-                                            for room in rooms {
-                                                ctx.text(room);
-                                            }
+                                            let chat_msg = ChatMessage {
+                                                chat_type: ChatType::STATUS,
+                                                value: rooms,
+                                                id: 0,
+                                            };
+                                            let msg = serde_json::to_string(&chat_msg).unwrap();
+                                            ctx.text(msg);
                                         }
                                         _ => println!("Failed to send message")
                                     }
@@ -101,6 +121,26 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                                     id: self.id,
                                     name: self.room.clone(),
                                 });
+                            }
+                        }
+                        "/typing" => {
+                            if v.len() == 2 {
+                                let mut chat_msg = ChatMessage {
+                                    chat_type: ChatType::TYPING,
+                                    value: vec![],
+                                    id: self.id,
+                                };
+                                if v[1] == "in" {
+                                    chat_msg.value = vec!["in".to_string()];
+                                } else {
+                                    chat_msg.value = vec!["out".to_string()];
+                                }
+                                let msg = serde_json::to_string(&chat_msg).unwrap();
+                                self.addr.do_send(server::ClientMessage{
+                                    id: self.id,
+                                    msg,
+                                    room: self.room.clone(),
+                                })
                             }
                         }
                         "/name" => {
@@ -118,6 +158,15 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                     } else {
                         m.to_owned()
                     };
+
+                    let chat_msg = ChatMessage {
+                        chat_type: ChatType::TEXT,
+                        value: vec![msg],
+                        id: self.id,
+                    };
+                    let msg = serde_json::to_string(&chat_msg).unwrap();
+                    println!("{msg}");
+
                     self.addr.do_send(server::ClientMessage{
                         id: self.id,
                         msg,
