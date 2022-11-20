@@ -7,9 +7,9 @@ export default function ChatListItem({ onSelect, username, index, selectedItem }
             <div className='flex justify-between items-center gap-3'>
                 <div className='flex gap-3 items-center'>
                     <Avatar>{username}</Avatar>
-                    <div >
+                    <div className="w-full max-w-[150px]">
                         <h3 className='font-semibold text-sm text-gray-700'>{username}</h3>
-                        <p className='font-light text-xs text-gray-600'>Some example chat desc...</p>
+                        <p className='font-light text-xs text-gray-600 truncate'>Some example chat description</p>
                     </div>
                 </div>
                 <div className='text-gray-400'>
