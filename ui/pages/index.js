@@ -1,15 +1,18 @@
 import Head from 'next/head'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Avatar from '../components/avatar'
 import ChatList from '../components/chat-list'
 import ConversationItem from '../components/conversation-item'
+import Login from '../components/login'
+import useLocalStorage from '../libs/useLocalStorage'
 import useWebsocket from '../libs/websocket'
 
 export default function Home() {
   const [sessionId, setSessionId] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState([]);
-
+  const [auth, setAuthUser] = useLocalStorage("user", false);
+ 
   const handleTyping = (mode) => {
     if (mode === "in") {
       setIsTyping(true)
@@ -72,6 +75,7 @@ export default function Home() {
     sendMessage(message)
     e.target.message.value = "";
     handleMessage(message, sessionId);
+    onFocusChange();
   }
 
   return (
@@ -82,7 +86,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className='bg-gradient-to-b from-orange-400 to-rose-400 h-screen p-12' >
+      {auth ? (<div className='bg-gradient-to-b from-orange-400 to-rose-400 h-screen p-12' >
         <main className='flex w-full max-w-[1020px] h-[700px] mx-auto bg-[#FAF9FE] rounded-[25px] backdrop-opacity-30 opacity-95'>
           <aside className='bg-[#F0EEF5] w-[325px] h-[700px] rounded-l-[25px] p-4 overflow-auto'>
             <ChatList />
@@ -121,7 +125,9 @@ export default function Home() {
             </div>
           </section>
         </main>
-      </div>
+      </div>) : (<Login setAuth={setAuthUser} />)}
+
+
     </div>
   )
 }
