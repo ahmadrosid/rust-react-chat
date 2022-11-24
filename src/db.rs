@@ -1,7 +1,9 @@
 use diesel::prelude::*;
 use uuid::Uuid;
+use chrono::{DateTime, Utc};
+use std::time::SystemTime;
 
-use crate::models::{User, Conversation};
+use crate::models::{User, Conversation, Room};
 
 type DbError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -47,8 +49,11 @@ pub fn find_user_by_phone(
     Ok(user)
 }
 
-use chrono::{DateTime, Utc};
-use std::time::SystemTime;
+pub fn get_all_rooms(conn: &mut SqliteConnection) -> Result<Vec<Room>, DbError> {
+    use crate::schema::rooms;
+    let rooms_data: Vec<Room> = rooms::table.get_results(conn)?;
+    Ok(rooms_data)
+}
 
 fn iso_date() -> String {
     let now = SystemTime::now();

@@ -14,6 +14,7 @@ diesel::table! {
     rooms (id) {
         id -> Text,
         name -> Text,
+        last_message -> Text,
         created_at -> Text,
     }
 }

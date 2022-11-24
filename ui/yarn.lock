@@ -2,6 +2,13 @@
 # yarn lockfile v1
 
 
+"@headlessui/react@^1.7.4":
+  "integrity" "sha512-D8n5yGCF3WIkPsjEYeM8knn9jQ70bigGGb5aUvN6y4BGxcT3OcOQOKcM3zRGllRCZCFxCZyQvYJF6ZE7bQUOyQ=="
+  "resolved" "https://registry.npmjs.org/@headlessui/react/-/react-1.7.4.tgz"
+  "version" "1.7.4"
+  dependencies:
+    "client-only" "^0.0.1"
+
 "@next/env@13.0.4":
   "integrity" "sha512-N5Z3bdxBzoxrC5bwykDFITzdWuwDteOdZ+7nxixY+I1XpRX8/iQYbw2wuXMdqdfBGm2NNUpAqg8YF2e4oAC2UQ=="
   "resolved" "https://registry.npmjs.org/@next/env/-/env-13.0.4.tgz"
@@ -131,7 +138,7 @@
   optionalDependencies:
     "fsevents" "~2.3.2"
 
-"client-only@0.0.1":
+"client-only@^0.0.1", "client-only@0.0.1":
   "integrity" "sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA=="
   "resolved" "https://registry.npmjs.org/client-only/-/client-only-0.0.1.tgz"
   "version" "0.0.1"
@@ -457,7 +464,7 @@
   "resolved" "https://registry.npmjs.org/quick-lru/-/quick-lru-5.1.1.tgz"
   "version" "5.1.1"
 
-"react-dom@^18.2.0", "react-dom@18.2.0":
+"react-dom@^16 || ^17 || ^18", "react-dom@^18.2.0", "react-dom@18.2.0":
   "integrity" "sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g=="
   "resolved" "https://registry.npmjs.org/react-dom/-/react-dom-18.2.0.tgz"
   "version" "18.2.0"
@@ -465,7 +472,7 @@
     "loose-envify" "^1.1.0"
     "scheduler" "^0.23.0"
 
-"react@^16.8.0 || ^17.0.0 || ^18.0.0", "react@^18.2.0", "react@>= 16.8.0 || 17.x.x || ^18.0.0-0", "react@18.2.0":
+"react@^16 || ^17 || ^18", "react@^16.8.0 || ^17.0.0 || ^18.0.0", "react@^18.2.0", "react@>= 16.8.0 || 17.x.x || ^18.0.0-0", "react@18.2.0":
   "integrity" "sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ=="
   "resolved" "https://registry.npmjs.org/react/-/react-18.2.0.tgz"
   "version" "18.2.0"

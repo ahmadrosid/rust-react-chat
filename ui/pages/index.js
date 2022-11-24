@@ -79,7 +79,7 @@ export default function Home() {
   }
 
   return (
-    <div >
+    <div>
       <Head>
         <title>Rust with react chat app</title>
         <meta name="description" content="Rust with react chat app" />
@@ -126,8 +126,6 @@ export default function Home() {
           </section>
         </main>
       </div>) : (<Login setAuth={setAuthUser} />)}
-
-
     </div>
   )
 }

@@ -37,6 +37,7 @@ async fn main() -> std::io::Result<()> {
     let app = HttpServer::new(move || {
         let cors = Cors::default()
             .allowed_origin("http://localhost:3000")
+            .allowed_origin("http://localhost:8080")
             .allowed_methods(vec!["GET", "POST"])
             .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
             .allowed_header(http::header::CONTENT_TYPE)
@@ -53,6 +54,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::create_user)
             .service(routes::get_user_by_id)
             .service(routes::get_user_by_phone)
+            .service(routes::get_rooms)
             .service(Files::new("/", "./static"))
     })
     .workers(2)

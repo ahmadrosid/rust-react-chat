@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
-
-use crate::schema::users;
-use crate::schema::conversations;
+use crate::schema::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable)]
 pub struct User {
@@ -11,13 +9,21 @@ pub struct User {
     pub created_at: String
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Queryable, Insertable)]
 pub struct Conversation {
     pub id: String,
     pub user_id: String,
     pub room_id: String,
     pub content: String,
     pub created_at: String
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable)]
+pub struct Room {
+    pub id: String,
+    pub name: String,
+    pub last_message: String,
+    pub created_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
