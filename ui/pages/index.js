@@ -25,23 +25,21 @@ export default function Home() {
 
   const handleMessage = (msg, userId) => {
     setMessages(prev => {
-      const item = { text: msg, user_id: userId };
-      console.log("handleMessage", [...prev, item]);
+      const item = { content: msg, user_id: userId };
       return [...prev, item];
     })
   }
 
   const onMessage = (data) => {
     try {
-      let messageJson = JSON.parse(data);
-      console.log(messageJson.chat_type);
-      switch (messageJson.chat_type) {
+      let messageData = JSON.parse(data);
+      switch (messageData.chat_type) {
         case "TYPING": {
-          handleTyping(messageJson.value[0]);
+          handleTyping(messageData.value[0]);
           return;
         }
         case "TEXT": {
-          handleMessage(messageJson.value[0], messageJson.id);
+          handleMessage(messageData.value[0], messageData.id);
           return;
         }
       }
@@ -101,9 +99,7 @@ export default function Home() {
     setRoomId(room.id)
   }
 
-  useEffect(() => {
-    setShowLogIn(!auth)
-  }, [auth])
+  useEffect(() => setShowLogIn(!auth), [auth])
 
   return (
     <div>

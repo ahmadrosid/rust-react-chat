@@ -16,16 +16,8 @@ export default function useConversations(room_id) {
     const [messages, setMessages] = useState([]);
 
     const updateMessages = (resp = []) => {
-        if (resp?.length == 0) return
         setIsLoading(false);
-        let dataConversation = resp.map(item => {
-            console.log("item", item);
-            return {
-                user_id: item.room_id,
-                text: item.content
-            }
-        });
-        setMessages(dataConversation)
+        setMessages(resp)
     }
 
     const fetchConversations = (id) => {
@@ -33,9 +25,7 @@ export default function useConversations(room_id) {
         fetchRoomData(id).then(updateMessages)
     }
 
-    useEffect(() => {
-        fetchConversations(room_id)
-    }, [])
+    useEffect(() => fetchConversations(room_id), []);
 
     return [isLoading, messages, setMessages, fetchConversations];
 }
