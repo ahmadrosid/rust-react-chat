@@ -1,13 +1,21 @@
 use std::time::{Duration, Instant};
+use std::fmt;
 
 use actix::prelude::*;
+use actix_web::web;
 use actix_web_actors::ws;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
+
+use diesel::{
+    prelude::*,
+    r2d2::{self, ConnectionManager},
+};
 
 use crate::server;
 
 const HEARBET: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
+type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
 #[derive(Debug)]
 pub struct WsChatSession {
@@ -16,9 +24,10 @@ pub struct WsChatSession {
     pub room: String,
     pub name: Option<String>,
     pub addr: Addr<server::ChatServer>,
+    pub db_pool: web::Data<DbPool>
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub enum ChatType {
     STATUS,
     TYPING,
@@ -27,12 +36,35 @@ pub enum ChatType {
     DISCONNECT,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct ChatMessage {
     pub chat_type: ChatType,
     pub value: Vec<String>,
+    pub room_id: String,
+    pub user_id: String,
     pub id: usize,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+struct InputMessage {
+    pub chat_type: String,
+    pub value: Vec<String>,
+    pub room_id: String,
+    pub user_id: String,
+}
+
+impl fmt::Display for ChatType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ChatType::STATUS => write!(f, "STATUS"),
+            ChatType::TEXT => write!(f, "TEXT"),
+            ChatType::TYPING => write!(f, "TYPING"),
+            ChatType::CONNECT => write!(f, "CONNECT"),
+            ChatType::DISCONNECT => write!(f, "DISCONNECT"),
+        }
+    }
+}
+
 
 impl Actor for WsChatSession {
     type Context = ws::WebsocketContext<Self>;
@@ -89,31 +121,35 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                 self.hb = Instant::now();
             }
             ws::Message::Text(text) => {
+                let data_json = serde_json::from_str::<InputMessage>(&text.to_string());
+                if data_json.is_err() {
+                    println!("Failed to parse message: {text}");
+                    return;
+                }
+
+                let input = data_json.as_ref().unwrap();
+
+                if input.chat_type == ChatType::TYPING.to_string() {
+                    let chat_msg = ChatMessage {
+                        chat_type: ChatType::TYPING,
+                        value: input.value.to_vec(),
+                        id: self.id,
+                        room_id: input.room_id.to_string(),
+                        user_id: input.user_id.to_string(),
+                    };
+                    let msg = serde_json::to_string(&chat_msg).unwrap();
+                    self.addr.do_send(server::ClientMessage{
+                        id: self.id,
+                        msg,
+                        room: self.room.clone(),
+                    })
+                }
+
                 let m = text.trim();
+                let room_id = self.room.to_string();
                 if m.starts_with("/") {
                     let v: Vec<&str> = m.splitn(2, ' ').collect();
                     match v[0] {
-                        "/list" => {
-                            self.addr
-                                .send(server::ListRooms)
-                                .into_actor(self)
-                                .then(|res, _, ctx| {
-                                    match res {
-                                        Ok(rooms) => {
-                                            let chat_msg = ChatMessage {
-                                                chat_type: ChatType::STATUS,
-                                                value: rooms,
-                                                id: 0,
-                                            };
-                                            let msg = serde_json::to_string(&chat_msg).unwrap();
-                                            ctx.text(msg);
-                                        }
-                                        _ => println!("Failed to send message")
-                                    }
-                                    fut::ready(())
-                                })
-                                .wait(ctx)
-                        }
                         "/join" => {
                             if v.len() == 2 {
                                 self.room = v[1].to_owned();
@@ -125,22 +161,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                         }
                         "/typing" => {
                             if v.len() == 2 {
-                                let mut chat_msg = ChatMessage {
-                                    chat_type: ChatType::TYPING,
-                                    value: vec![],
-                                    id: self.id,
-                                };
-                                if v[1] == "in" {
-                                    chat_msg.value = vec!["in".to_string()];
-                                } else {
-                                    chat_msg.value = vec!["out".to_string()];
-                                }
-                                let msg = serde_json::to_string(&chat_msg).unwrap();
-                                self.addr.do_send(server::ClientMessage{
-                                    id: self.id,
-                                    msg,
-                                    room: self.room.clone(),
-                                })
+                                
                             }
                         }
                         "/name" => {
@@ -153,20 +174,16 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                         _ => ctx.text(format!("unknown operation: {m:?}"))
                     }
                 } else {
-                    let msg = if let Some(ref name) = self.name {
-                        format!("{name}: {m}")
-                    } else {
-                        m.to_owned()
-                    };
+                    let msg = data_json.unwrap().value;
 
                     let chat_msg = ChatMessage {
                         chat_type: ChatType::TEXT,
-                        value: vec![msg],
+                        value: msg,
                         id: self.id,
+                        room_id: room_id.to_string(),
+                        user_id: String::new(),
                     };
                     let msg = serde_json::to_string(&chat_msg).unwrap();
-                    println!("{msg}");
-
                     self.addr.do_send(server::ClientMessage{
                         id: self.id,
                         msg,

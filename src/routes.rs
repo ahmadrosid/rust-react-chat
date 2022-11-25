@@ -29,15 +29,17 @@ pub async fn index() -> impl Responder {
 pub async fn chat_server(
     req: HttpRequest,
     stream: web::Payload,
+    pool: web::Data<DbPool>,
     srv: web::Data<Addr<server::ChatServer>>,
 ) -> Result<HttpResponse, Error> {
     ws::start(
         session::WsChatSession {
             id: 0,
             hb: Instant::now(),
-            room: "main".to_owned(),
+            room: "main".to_string(),
             name: None,
             addr: srv.get_ref().clone(),
+            db_pool: pool,
         },
         &req,
         stream

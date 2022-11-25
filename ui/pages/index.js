@@ -1,5 +1,5 @@
 import Head from 'next/head'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import Avatar from '../components/avatar'
 import ChatList from '../components/chat-list'
 import ConversationItem from '../components/conversation-item'
@@ -12,9 +12,10 @@ export default function Home() {
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState([]);
   const [auth, setAuthUser] = useLocalStorage("user", false);
+  console.log({ auth });
  
   const handleTyping = (mode) => {
-    if (mode === "in") {
+    if (mode === "IN") {
       setIsTyping(true)
     } else {
       setIsTyping(false)
@@ -56,23 +57,39 @@ export default function Home() {
 
   const [sendMessage, closeConnection] = useWebsocket(onMessage)
   const updateFocus = () => {
-    console.log("I'm focusing...");
-    sendMessage("/typing in")
+    const data = {
+      chat_type: "TYPING",
+      value: ["IN"],
+      room_id: "main",
+      user_id: auth.id
+    }
+    sendMessage(JSON.stringify(data))
   }
 
   const onFocusChange = () => {
-    console.log('The focus is gone...');
-    sendMessage("/typing out")
+    const data = {
+      chat_type: "TYPING",
+      value: ["OUT"],
+      room_id: "main",
+      user_id: auth.id
+    }
+    sendMessage(JSON.stringify(data))
   }
 
-  const submitForm = (e) => {
+  const submitMessage = (e) => {
     e.preventDefault();
     let message = e.target.message.value;
     if (message === "") {
       return;
     }
 
-    sendMessage(message)
+    const data = {
+      chat_type: "TEXT",
+      value: [message],
+      room_id: "main",
+      user_id: auth.id
+    }
+    sendMessage(JSON.stringify(data))
     e.target.message.value = "";
     handleMessage(message, sessionId);
     onFocusChange();
@@ -113,7 +130,7 @@ export default function Home() {
               }
             </div>
             <div className='w-full'>
-              <form onSubmit={submitForm} className='flex gap-2 items-center rounded-full border border-violet-500 bg-violet-200 p-1 m-2'>
+              <form onSubmit={submitMessage} className='flex gap-2 items-center rounded-full border border-violet-500 bg-violet-200 p-1 m-2'>
                 <input
                   onBlur={onFocusChange}
                   onFocus={updateFocus}
