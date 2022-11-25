@@ -1,16 +1,13 @@
-use diesel::prelude::*;
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
 use std::time::SystemTime;
+use uuid::Uuid;
 
-use crate::models::{User, Conversation, Room};
+use crate::models::{Conversation, NewConversation, Room, User};
 
 type DbError = Box<dyn std::error::Error + Send + Sync>;
 
-pub fn find_user_by_uid(
-    conn: &mut SqliteConnection,
-    uid: Uuid,
-) -> Result<Option<User>, DbError> {
+pub fn find_user_by_uid(conn: &mut SqliteConnection, uid: Uuid) -> Result<Option<User>, DbError> {
     use crate::schema::users::dsl::*;
 
     let user = users
@@ -21,16 +18,20 @@ pub fn find_user_by_uid(
     Ok(user)
 }
 
-pub fn find_conversation_by_uid(
+pub fn get_conversation_by_room_uid(
     conn: &mut SqliteConnection,
     uid: Uuid,
-) -> Result<Option<Conversation>, DbError> {
-    use crate::schema::conversations::dsl::*;
+) -> Result<Option<Vec<Conversation>>, DbError> {
+    use crate::schema::conversations;
 
-    let convo = conversations
-        .filter(id.eq(uid.to_string()))
-        .first::<Conversation>(conn)
+    let convo = conversations::table
+        .filter(conversations::room_id.eq(uid.to_string()))
+        .load(conn)
         .optional()?;
+
+    // for item in &convo.clone().unwrap() {
+    //     println!("room_id:{}, user_id:{}", item.room_id, item.user_id);
+    // }
 
     Ok(convo)
 }
@@ -61,11 +62,7 @@ fn iso_date() -> String {
     return now.to_rfc3339();
 }
 
-pub fn insert_new_user(
-    conn: &mut SqliteConnection,
-    nm: &str,
-    pn: &str,
-) -> Result<User, DbError> {
+pub fn insert_new_user(conn: &mut SqliteConnection, nm: &str, pn: &str) -> Result<User, DbError> {
     use crate::schema::users::dsl::*;
 
     let new_user = User {
@@ -78,4 +75,25 @@ pub fn insert_new_user(
     diesel::insert_into(users).values(&new_user).execute(conn)?;
 
     Ok(new_user)
+}
+
+pub fn insert_new_conversation(
+    conn: &mut SqliteConnection,
+    new: NewConversation,
+) -> Result<Conversation, DbError> {
+    use crate::schema::conversations::dsl::*;
+
+    let new_conversation = Conversation {
+        id: Uuid::new_v4().to_string(),
+        user_id: new.user_id,
+        room_id: new.room_id,
+        content: new.message,
+        created_at: iso_date(),
+    };
+
+    diesel::insert_into(conversations)
+        .values(&new_conversation)
+        .execute(conn)?;
+
+    Ok(new_conversation)
 }

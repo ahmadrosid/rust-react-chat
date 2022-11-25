@@ -88,26 +88,26 @@ pub async fn get_user_by_id(
     }
 }
 
-#[get("/conversations/{id}")]
+#[get("/conversations/{uid}")]
 pub async fn get_conversation_by_id(
     pool: web::Data<DbPool>,
-    id: web::Path<Uuid>,
+    uid: web::Path<Uuid>,
 ) -> Result<HttpResponse, Error> {
-    let user_id = id.to_owned();
-    let user = web::block(move || {
+    let room_id = uid.to_owned();
+    let conversations = web::block(move || {
         let mut conn = pool.get()?;
-        db::find_conversation_by_uid(&mut conn, user_id)
+        db::get_conversation_by_room_uid(&mut conn, room_id)
     })
     .await?
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    if let Some(user) = user {
-        Ok(HttpResponse::Ok().json(user))
+    if let Some(data) = conversations {
+        Ok(HttpResponse::Ok().json(data))
     } else {
         let res = HttpResponse::NotFound().body(
             json!({
                 "error": 404,
-                "message": format!("No user found with phone: {id}")
+                "message": format!("No conversation with room_id: {room_id}")
             })
             .to_string(),
         );

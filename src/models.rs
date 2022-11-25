@@ -12,8 +12,8 @@ pub struct User {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Queryable, Insertable)]
 pub struct Conversation {
     pub id: String,
-    pub user_id: String,
     pub room_id: String,
+    pub user_id: String,
     pub content: String,
     pub created_at: String
 }
@@ -30,4 +30,11 @@ pub struct Room {
 pub struct NewUser {
     pub username: String,
     pub phone: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewConversation {
+    pub user_id: String,
+    pub room_id: String,
+    pub message: String,
 }

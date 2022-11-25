@@ -1,16 +1,18 @@
-use std::time::{Duration, Instant};
 use std::fmt;
+use std::time::{Duration, Instant};
 
 use actix::prelude::*;
 use actix_web::web;
 use actix_web_actors::ws;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use diesel::{
     prelude::*,
     r2d2::{self, ConnectionManager},
 };
 
+use crate::db;
+use crate::models::NewConversation;
 use crate::server;
 
 const HEARBET: Duration = Duration::from_secs(5);
@@ -24,7 +26,7 @@ pub struct WsChatSession {
     pub room: String,
     pub name: Option<String>,
     pub addr: Addr<server::ChatServer>,
-    pub db_pool: web::Data<DbPool>
+    pub db_pool: web::Data<DbPool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -65,7 +67,6 @@ impl fmt::Display for ChatType {
     }
 }
 
-
 impl Actor for WsChatSession {
     type Context = ws::WebsocketContext<Self>;
 
@@ -75,14 +76,14 @@ impl Actor for WsChatSession {
         let addr = ctx.address();
 
         self.addr
-            .send(server::Connect{
+            .send(server::Connect {
                 addr: addr.recipient(),
             })
             .into_actor(self)
             .then(|res, act, ctx| {
                 match res {
                     Ok(res) => act.id = res,
-                    _ => ctx.stop()
+                    _ => ctx.stop(),
                 }
                 fut::ready(())
             })
@@ -90,7 +91,7 @@ impl Actor for WsChatSession {
     }
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
-        self.addr.do_send(server::Disconnect{id: self.id});
+        self.addr.do_send(server::Disconnect { id: self.id });
         Running::Stop
     }
 }
@@ -108,8 +109,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
             Err(_) => {
                 ctx.stop();
                 return;
-            },
-            Ok(msg) => msg
+            }
+            Ok(msg) => msg,
         };
 
         match msg {
@@ -121,14 +122,15 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                 self.hb = Instant::now();
             }
             ws::Message::Text(text) => {
+                println!("{text}");
                 let data_json = serde_json::from_str::<InputMessage>(&text.to_string());
-                if data_json.is_err() {
+                if let Err(err) = data_json {
+                    println!("{err}");
                     println!("Failed to parse message: {text}");
                     return;
                 }
 
                 let input = data_json.as_ref().unwrap();
-
                 if input.chat_type == ChatType::TYPING.to_string() {
                     let chat_msg = ChatMessage {
                         chat_type: ChatType::TYPING,
@@ -138,53 +140,30 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                         user_id: input.user_id.to_string(),
                     };
                     let msg = serde_json::to_string(&chat_msg).unwrap();
-                    self.addr.do_send(server::ClientMessage{
+                    self.addr.do_send(server::ClientMessage {
                         id: self.id,
                         msg,
                         room: self.room.clone(),
                     })
-                }
-
-                let m = text.trim();
-                let room_id = self.room.to_string();
-                if m.starts_with("/") {
-                    let v: Vec<&str> = m.splitn(2, ' ').collect();
-                    match v[0] {
-                        "/join" => {
-                            if v.len() == 2 {
-                                self.room = v[1].to_owned();
-                                self.addr.do_send(server::Join {
-                                    id: self.id,
-                                    name: self.room.clone(),
-                                });
-                            }
-                        }
-                        "/typing" => {
-                            if v.len() == 2 {
-                                
-                            }
-                        }
-                        "/name" => {
-                            if v.len() == 2 {
-                                self.name = Some(v[1].to_owned());
-                            } else {
-                                ctx.text("Usename is required!")
-                            }
-                        }
-                        _ => ctx.text(format!("unknown operation: {m:?}"))
-                    }
                 } else {
-                    let msg = data_json.unwrap().value;
-
+                    let input = data_json.as_ref().unwrap();
                     let chat_msg = ChatMessage {
                         chat_type: ChatType::TEXT,
-                        value: msg,
+                        value: input.value.to_vec(),
                         id: self.id,
-                        room_id: room_id.to_string(),
-                        user_id: String::new(),
+                        room_id: input.room_id.to_string(),
+                        user_id: input.user_id.to_string(),
                     };
+
+                    let mut conn = self.db_pool.get().unwrap();
+                    let new_conversation = NewConversation {
+                        user_id: input.user_id.to_string(),
+                        room_id: input.room_id.to_string(),
+                        message: input.value.join("")
+                    };
+                    let _ = db::insert_new_conversation(&mut conn, new_conversation);
                     let msg = serde_json::to_string(&chat_msg).unwrap();
-                    self.addr.do_send(server::ClientMessage{
+                    self.addr.do_send(server::ClientMessage {
                         id: self.id,
                         msg,
                         room: self.room.clone(),
@@ -208,7 +187,7 @@ impl WsChatSession {
     fn hb(&self, ctx: &mut ws::WebsocketContext<Self>) {
         ctx.run_interval(HEARBET, |act, ctx| {
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
-                act.addr.do_send(server::Disconnect {id: act.id });
+                act.addr.do_send(server::Disconnect { id: act.id });
                 ctx.stop();
                 return;
             }
