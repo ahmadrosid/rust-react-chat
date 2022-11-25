@@ -6,7 +6,7 @@ export default function ChatListItem({ onSelect, username, description, createdA
     const ampm = date.getHours() >= 12 ? 'PM' : 'AM';
     const time = `${date.getHours()}:${date.getMinutes()} ${ampm}`
     return (
-        <div onClick={() => onSelect(index)} className={`${active ? 'bg-[#FDF9F0] border border-[#DEAB6C]' : 'bg-[#FAF9FE] border border-[#FAF9FE]'} p-2 rounded-[10px] shadow-sm cursor-pointer`} >
+        <div onClick={() => onSelect(index, {})} className={`${active ? 'bg-[#FDF9F0] border border-[#DEAB6C]' : 'bg-[#FAF9FE] border border-[#FAF9FE]'} p-2 rounded-[10px] shadow-sm cursor-pointer`} >
             <div className='flex justify-between items-center gap-3'>
                 <div className='flex gap-3 items-center w-full'>
                     <Avatar>{username}</Avatar>

@@ -1,19 +1,20 @@
 import Head from 'next/head'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Avatar from '../components/avatar'
 import ChatList from '../components/chat-list'
-import ConversationItem from '../components/conversation-item'
+import Conversation from '../components/conversation'
 import Login from '../components/login'
+import useConversations from '../libs/useConversation'
 import useLocalStorage from '../libs/useLocalStorage'
 import useWebsocket from '../libs/websocket'
 
 export default function Home() {
-  const [sessionId, setSessionId] = useState(null);
+  const [roomId, setRoomId] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [showLogIn, setShowLogIn] = useState(false);
   const [auth, setAuthUser] = useLocalStorage("user", false);
-  console.log({ auth });
- 
+  const [isLoading, messages, setMessages, fetchConversations] = useConversations("");
+
   const handleTyping = (mode) => {
     if (mode === "IN") {
       setIsTyping(true)
@@ -22,10 +23,10 @@ export default function Home() {
     }
   }
 
-  const handleMessage = (msg, id) => {
+  const handleMessage = (msg, userId) => {
     setMessages(prev => {
-      const item = { text: msg, id };
-      console.log([...prev, item]);
+      const item = { text: msg, user_id: userId };
+      console.log("handleMessage", [...prev, item]);
       return [...prev, item];
     })
   }
@@ -41,12 +42,6 @@ export default function Home() {
         }
         case "TEXT": {
           handleMessage(messageJson.value[0], messageJson.id);
-          return;
-        }
-        case "CONNECT": {
-          if (sessionId === null) {
-            setSessionId(messageJson.value[0])
-          }
           return;
         }
       }
@@ -83,17 +78,32 @@ export default function Home() {
       return;
     }
 
+    if (!auth.id) {
+      alert("You don't have an ID, please create one!!!")
+      return
+    }
+
     const data = {
       chat_type: "TEXT",
       value: [message],
-      room_id: "main",
+      room_id: roomId,
       user_id: auth.id
     }
     sendMessage(JSON.stringify(data))
     e.target.message.value = "";
-    handleMessage(message, sessionId);
+    handleMessage(message, auth.id);
     onFocusChange();
   }
+
+  const updateMessages = (room) => {
+    if (!room.id) return;
+    fetchConversations(room.id)
+    setRoomId(room.id)
+  }
+
+  useEffect(() => {
+    setShowLogIn(!auth)
+  }, [auth])
 
   return (
     <div>
@@ -102,11 +112,11 @@ export default function Home() {
         <meta name="description" content="Rust with react chat app" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-
-      {auth ? (<div className='bg-gradient-to-b from-orange-400 to-rose-400 h-screen p-12' >
+      <Login show={showLogIn} setAuth={setAuthUser} />
+      <div className={`${!auth && 'hidden'} bg-gradient-to-b from-orange-400 to-rose-400 h-screen p-12`}>
         <main className='flex w-full max-w-[1020px] h-[700px] mx-auto bg-[#FAF9FE] rounded-[25px] backdrop-opacity-30 opacity-95'>
           <aside className='bg-[#F0EEF5] w-[325px] h-[700px] rounded-l-[25px] p-4 overflow-auto'>
-            <ChatList />
+            <ChatList onChatChange={updateMessages} />
           </aside>
           <section className='rounded-r-[25px] w-full max-w-[690px] grid grid-rows-[80px_minmax(450px,_1fr)_65px]'>
             <div className='rounded-tr-[25px] w-ful'>
@@ -119,16 +129,8 @@ export default function Home() {
               </div>
               <hr className='bg-[#F0EEF5]' />
             </div>
-            <div className='p-2 space-y-4 overflow-y-auto'>
-              {
-                React.Children.toArray(
-                  messages.map(item => {
-                    const isMe = item.id === sessionId;
-                    return <ConversationItem right={isMe} content={item.text} />
-                  })
-                )
-              }
-            </div>
+            {isLoading && <p className="px-4 text-slate-500">Loading conversation...</p>}
+            <Conversation data={messages} auth={auth}/>
             <div className='w-full'>
               <form onSubmit={submitMessage} className='flex gap-2 items-center rounded-full border border-violet-500 bg-violet-200 p-1 m-2'>
                 <input
@@ -142,7 +144,7 @@ export default function Home() {
             </div>
           </section>
         </main>
-      </div>) : (<Login setAuth={setAuthUser} />)}
+      </div>
     </div>
   )
 }

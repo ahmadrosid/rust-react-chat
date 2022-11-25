@@ -12,14 +12,12 @@ async function getRooms() {
     }
 }
 
-export default function ChatList() {
+export default function ChatList({ onChatChange }) {
     const [data, setData] = useState([])
     const [isLoading, setLoading] = useState(false)
+    const [selectedItem, setSelectedItem] = useState(-1);
 
     useEffect(() => {
-        if (typeof window === "undefined") {
-            return;
-        }
         setLoading(true)
         getRooms()
             .then((data) => {
@@ -28,22 +26,26 @@ export default function ChatList() {
             })
     }, [])
 
-    const [selectedItem, setSelectedItem] = useState(-1);
+    const onSelectedChat = (idx, item) => {
+        setSelectedItem(idx)
+        onChatChange(item)
+    }
+    
     return (
         <div className="overflow-hidden space-y-3">
+            {isLoading && <p>Loading chat lists.</p>}
             {
-                React.Children.toArray(
-                    data.map((item, index) => {
-                        return <ChatListItem
-                            onSelect={(idx) => setSelectedItem(idx)}
-                            className="cursor-pointer"
-                            username={item.name} 
-                            description={item.last_message}
-                            createdAt={item.created_at}
-                            index={index}
-                            selectedItem={selectedItem} />
-                    })
-                )
+                data.map((item, index) => {
+                    return <ChatListItem
+                        onSelect={(idx) => onSelectedChat(idx, item)}
+                        className="cursor-pointer"
+                        username={item.name}
+                        description={item.last_message}
+                        createdAt={item.created_at}
+                        index={index}
+                        key={item.id}
+                        selectedItem={selectedItem} />
+                })
             }
         </div>
     )
