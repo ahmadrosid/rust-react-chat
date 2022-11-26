@@ -29,10 +29,5 @@ export default function useWebsocket(onMessage) {
         console.log("message sent", msg)
     }
 
-    const closeConnection = () => {
-        if (!ws.current) return;
-        ws.current.close();
-    }
-
-    return [sendMessage, closeConnection]
+    return sendMessage;
 }

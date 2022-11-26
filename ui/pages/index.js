@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import React, { useEffect, useState } from 'react'
 import Avatar from '../components/avatar'
-import ChatList from '../components/chat-list'
+import ChatList from '../components/rooms'
 import Conversation from '../components/conversation'
 import Login from '../components/login'
 import useConversations from '../libs/useConversation'
@@ -48,7 +48,7 @@ export default function Home() {
     }
   }
 
-  const [sendMessage, closeConnection] = useWebsocket(onMessage)
+  const sendMessage = useWebsocket(onMessage)
   const updateFocus = () => {
     const data = {
       chat_type: "TYPING",
@@ -76,8 +76,8 @@ export default function Home() {
       return;
     }
 
-    if (!auth.id) {
-      alert("You don't have an ID, please create one!!!")
+    if (!roomId) {
+      alert("Please select chat room!")
       return
     }
 
@@ -125,7 +125,7 @@ export default function Home() {
               </div>
               <hr className='bg-[#F0EEF5]' />
             </div>
-            {isLoading && <p className="px-4 text-slate-500">Loading conversation...</p>}
+            {(isLoading && roomId) && <p className="px-4 text-slate-500">Loading conversation...</p>}
             <Conversation data={messages} auth={auth}/>
             <div className='w-full'>
               <form onSubmit={submitMessage} className='flex gap-2 items-center rounded-full border border-violet-500 bg-violet-200 p-1 m-2'>
