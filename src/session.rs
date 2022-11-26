@@ -14,7 +14,7 @@ use crate::db;
 use crate::models::NewConversation;
 use crate::server;
 
-const HEARBET: Duration = Duration::from_secs(5);
+const HEARBEET: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
@@ -167,7 +167,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
 
 impl WsChatSession {
     fn hb(&self, ctx: &mut ws::WebsocketContext<Self>) {
-        ctx.run_interval(HEARBET, |act, ctx| {
+        ctx.run_interval(HEARBEET, |act, ctx| {
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
                 act.addr.do_send(server::Disconnect { id: act.id });
                 ctx.stop();
