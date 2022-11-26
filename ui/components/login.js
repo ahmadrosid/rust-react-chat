@@ -44,7 +44,7 @@ export default function Login({ show, setAuth }) {
 
             let res = await createAccount({ username, phone });
             if (res === null) {
-                console.log("Failed to create account");
+                alert("Failed to create account");
                 return;
             }
 
@@ -87,7 +87,12 @@ export default function Login({ show, setAuth }) {
 
             let res = await signIn({ phone });
             if (res === null) {
-                console.log("Failed to create account");
+                alert("Failed to create account");
+                return;
+            }
+
+            if (!res.id) {
+                alert(`Phone number not found ${phone}`);
                 return;
             }
 

@@ -12,19 +12,24 @@ async function getRooms() {
     }
 }
 
-function ChatListItem({ onSelect, username, description, createdAt, index, selectedItem }) {
+function ChatListItem({ onSelect, room, userId, index, selectedItem }) {
+    const { users, created_at, last_message } = room;
     const active = index == selectedItem;
-    const date = new Date(createdAt);
+    const date = new Date(created_at);
     const ampm = date.getHours() >= 12 ? 'PM' : 'AM';
     const time = `${date.getHours()}:${date.getMinutes()} ${ampm}`
+    const name = users?.filter(user => user.id != userId).map(user => user.username)[0];
+
     return (
-        <div onClick={() => onSelect(index, {})} className={`${active ? 'bg-[#FDF9F0] border border-[#DEAB6C]' : 'bg-[#FAF9FE] border border-[#FAF9FE]'} p-2 rounded-[10px] shadow-sm cursor-pointer`} >
+        <div
+            onClick={() => onSelect(index, {})}
+            className={`${active ? 'bg-[#FDF9F0] border border-[#DEAB6C]' : 'bg-[#FAF9FE] border border-[#FAF9FE]'} p-2 rounded-[10px] shadow-sm cursor-pointer`} >
             <div className='flex justify-between items-center gap-3'>
                 <div className='flex gap-3 items-center w-full'>
-                    <Avatar>{username}</Avatar>
+                    <Avatar>{name}</Avatar>
                     <div className="w-full max-w-[150px]">
-                        <h3 className='font-semibold text-sm text-gray-700'>{username}</h3>
-                        <p className='font-light text-xs text-gray-600 truncate'>{description}</p>
+                        <h3 className='font-semibold text-sm text-gray-700'>{name}</h3>
+                        <p className='font-light text-xs text-gray-600 truncate'>{last_message}</p>
                     </div>
                 </div>
                 <div className='text-gray-400 min-w-[55px]'>
@@ -35,7 +40,7 @@ function ChatListItem({ onSelect, username, description, createdAt, index, selec
     )
 }
 
-export default function ChatList({ onChatChange }) {
+export default function ChatList({ onChatChange, userId }) {
     const [data, setData] = useState([])
     const [isLoading, setLoading] = useState(false)
     const [selectedItem, setSelectedItem] = useState(-1);
@@ -51,9 +56,21 @@ export default function ChatList({ onChatChange }) {
 
     const onSelectedChat = (idx, item) => {
         setSelectedItem(idx)
-        onChatChange(item)
+        let mapUsers = new Map();
+        item.users.forEach(el => {
+            mapUsers.set(el.id, el);
+        });
+        const users = {
+            get: (id) => {
+                return mapUsers.get(id).username;
+            },
+            get_target_user: (id) => {
+                return item.users.filter(el => el.id != id).map(el => el.username).join("")
+            }
+        }
+        onChatChange({ ...item.room, users })
     }
-    
+
     return (
         <div className="overflow-hidden space-y-3">
             {isLoading && <p>Loading chat lists.</p>}
@@ -61,12 +78,10 @@ export default function ChatList({ onChatChange }) {
                 data.map((item, index) => {
                     return <ChatListItem
                         onSelect={(idx) => onSelectedChat(idx, item)}
-                        className="cursor-pointer"
-                        username={item.name}
-                        description={item.last_message}
-                        createdAt={item.created_at}
+                        room={{ ...item.room, users: item.users }}
                         index={index}
-                        key={item.id}
+                        key={item.room.id}
+                        userId={userId}
                         selectedItem={selectedItem} />
                 })
             }

@@ -26,7 +26,6 @@ export default function useWebsocket(onMessage) {
     const sendMessage = (msg) => {
         if (!ws.current) return;
         ws.current.send(msg);
-        console.log("message sent", msg)
     }
 
     return sendMessage;
