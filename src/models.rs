@@ -23,6 +23,7 @@ pub struct Room {
     pub id: String,
     pub name: String,
     pub last_message: String,
+    pub participant_ids: String,
     pub created_at: String,
 }
 
@@ -37,4 +38,10 @@ pub struct NewConversation {
     pub user_id: String,
     pub room_id: String,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoomResponse {
+    pub room: Room,
+    pub users: Vec<User>,
 }

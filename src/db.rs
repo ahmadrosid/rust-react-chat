@@ -1,9 +1,12 @@
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use std::time::SystemTime;
+use std::{
+    collections::{HashMap, HashSet},
+    time::SystemTime,
+};
 use uuid::Uuid;
 
-use crate::models::{Conversation, NewConversation, Room, User};
+use crate::models::{Conversation, NewConversation, Room, RoomResponse, User};
 
 type DbError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -29,10 +32,6 @@ pub fn get_conversation_by_room_uid(
         .load(conn)
         .optional()?;
 
-    // for item in &convo.clone().unwrap() {
-    //     println!("room_id:{}, user_id:{}", item.room_id, item.user_id);
-    // }
-
     Ok(convo)
 }
 
@@ -50,10 +49,46 @@ pub fn find_user_by_phone(
     Ok(user)
 }
 
-pub fn get_all_rooms(conn: &mut SqliteConnection) -> Result<Vec<Room>, DbError> {
+pub fn get_all_rooms(conn: &mut SqliteConnection) -> Result<Vec<RoomResponse>, DbError> {
     use crate::schema::rooms;
+    use crate::schema::users;
+
     let rooms_data: Vec<Room> = rooms::table.get_results(conn)?;
-    Ok(rooms_data)
+    let mut ids = HashSet::new();
+    let mut rooms_map = HashMap::new();
+    let data = rooms_data.to_vec();
+    for room in &data {
+        let user_ids = room
+            .participant_ids
+            .split(",")
+            .into_iter()
+            .collect::<Vec<_>>();
+        for id in user_ids.to_vec() {
+            ids.insert(id.to_string());
+        }
+        rooms_map.insert(room.id.to_string(), user_ids.to_vec());
+    }
+
+    let ids = ids.into_iter().collect::<Vec<_>>();
+    let users_data: Vec<User> = users::table
+        .filter(users::id.eq_any(ids))
+        .get_results(conn)?;
+    let users_map: HashMap<String, User> = HashMap::from_iter(
+        users_data
+            .into_iter()
+            .map(|item| (item.id.to_string(), item)),
+    );
+
+    let response_rooms = rooms_data.into_iter().map(|room| {
+        let users = rooms_map
+            .get(&room.id.to_string())
+            .unwrap()
+            .into_iter()
+            .map(|id| users_map.get(id.to_owned()).unwrap().clone())
+            .collect::<Vec<_>>();
+        return RoomResponse{ room, users };
+    }).collect::<Vec<_>>();
+    Ok(response_rooms)
 }
 
 fn iso_date() -> String {

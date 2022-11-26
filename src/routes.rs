@@ -1,7 +1,4 @@
-use std::{
-    sync::atomic::{AtomicUsize, Ordering},
-    time::Instant,
-};
+use std::time::Instant;
 
 use actix::*;
 use actix_files::NamedFile;
@@ -165,9 +162,4 @@ pub async fn get_rooms(
         );
         Ok(res)
     }
-}
-
-pub async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
-    let current_count = count.load(Ordering::SeqCst);
-    format!("Visitors: {current_count}")
 }

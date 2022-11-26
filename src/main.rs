@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate diesel;
 
-use std::sync::{atomic::AtomicUsize, Arc};
-
 use actix::*;
 use actix_cors::Cors;
 use actix_files::Files;
@@ -22,8 +20,7 @@ mod session;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let app_state = Arc::new(AtomicUsize::new(0));
-    let server = server::ChatServer::new(app_state.clone()).start();
+    let server = server::ChatServer::new().start();
 
     let conn_spec = "chat.db";
     let manager = ConnectionManager::<SqliteConnection>::new(conn_spec);
@@ -44,12 +41,10 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
-            .app_data(web::Data::from(app_state.clone()))
             .app_data(web::Data::new(server.clone()))
             .app_data(web::Data::new(pool.clone()))
             .wrap(cors)
             .service(web::resource("/").to(routes::index))
-            .route("/count", web::get().to(routes::get_count))
             .route("/ws", web::get().to(routes::chat_server))
             .service(routes::create_user)
             .service(routes::get_user_by_id)

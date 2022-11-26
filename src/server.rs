@@ -1,10 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    }, vec,
-};
+use std::collections::{HashMap, HashSet};
 
 use serde_json::json;
 
@@ -55,19 +49,17 @@ pub struct ChatServer {
     sessions: HashMap<usize, Recipient<Message>>,
     rooms: HashMap<String, HashSet<usize>>,
     rng: ThreadRng,
-    visitor_count: Arc<AtomicUsize>,
 }
 
 impl ChatServer {
-    pub fn new(visitor_count: Arc<AtomicUsize>) -> ChatServer {
+    pub fn new() -> ChatServer {
         let mut rooms = HashMap::new();
         rooms.insert("main".to_string(), HashSet::new());
 
         Self {
             sessions: HashMap::new(),
             rooms,
-            rng: rand::thread_rng(),
-            visitor_count,
+            rng: rand::thread_rng()
         }
     }
 
@@ -98,9 +90,7 @@ impl Handler<Connect> for ChatServer {
             .entry("main".to_string())
             .or_insert_with(HashSet::new)
             .insert(id);
-        let count = self.visitor_count.fetch_add(1, Ordering::SeqCst);
         self.send_message("main", &json!({
-            "visitor": count,
             "value": vec![format!("{}", id)],
             "chat_type": session::ChatType::CONNECT
         }).to_string(), 0);

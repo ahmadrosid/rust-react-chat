@@ -1,4 +1,3 @@
-use std::fmt;
 use std::time::{Duration, Instant};
 
 use actix::prelude::*;
@@ -29,7 +28,7 @@ pub struct WsChatSession {
     pub db_pool: web::Data<DbPool>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(PartialEq, Serialize, Deserialize)]
 pub enum ChatType {
     STATUS,
     TYPING,
@@ -45,26 +44,6 @@ struct ChatMessage {
     pub room_id: String,
     pub user_id: String,
     pub id: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct InputMessage {
-    pub chat_type: String,
-    pub value: Vec<String>,
-    pub room_id: String,
-    pub user_id: String,
-}
-
-impl fmt::Display for ChatType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ChatType::STATUS => write!(f, "STATUS"),
-            ChatType::TEXT => write!(f, "TEXT"),
-            ChatType::TYPING => write!(f, "TYPING"),
-            ChatType::CONNECT => write!(f, "CONNECT"),
-            ChatType::DISCONNECT => write!(f, "DISCONNECT"),
-        }
-    }
 }
 
 impl Actor for WsChatSession {
@@ -122,8 +101,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                 self.hb = Instant::now();
             }
             ws::Message::Text(text) => {
-                println!("{text}");
-                let data_json = serde_json::from_str::<InputMessage>(&text.to_string());
+                let data_json = serde_json::from_str::<ChatMessage>(&text.to_string());
                 if let Err(err) = data_json {
                     println!("{err}");
                     println!("Failed to parse message: {text}");
@@ -131,43 +109,47 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                 }
 
                 let input = data_json.as_ref().unwrap();
-                if input.chat_type == ChatType::TYPING.to_string() {
-                    let chat_msg = ChatMessage {
-                        chat_type: ChatType::TYPING,
-                        value: input.value.to_vec(),
-                        id: self.id,
-                        room_id: input.room_id.to_string(),
-                        user_id: input.user_id.to_string(),
-                    };
-                    let msg = serde_json::to_string(&chat_msg).unwrap();
-                    self.addr.do_send(server::ClientMessage {
-                        id: self.id,
-                        msg,
-                        room: self.room.clone(),
-                    })
-                } else {
-                    let input = data_json.as_ref().unwrap();
-                    let chat_msg = ChatMessage {
-                        chat_type: ChatType::TEXT,
-                        value: input.value.to_vec(),
-                        id: self.id,
-                        room_id: input.room_id.to_string(),
-                        user_id: input.user_id.to_string(),
-                    };
+                match &input.chat_type {
+                    ChatType::TYPING => {
+                        let chat_msg = ChatMessage {
+                            chat_type: ChatType::TYPING,
+                            value: input.value.to_vec(),
+                            id: self.id,
+                            room_id: input.room_id.to_string(),
+                            user_id: input.user_id.to_string(),
+                        };
+                        let msg = serde_json::to_string(&chat_msg).unwrap();
+                        self.addr.do_send(server::ClientMessage {
+                            id: self.id,
+                            msg,
+                            room: self.room.clone(),
+                        })
+                    }
+                    ChatType::TEXT => {
+                        let input = data_json.as_ref().unwrap();
+                        let chat_msg = ChatMessage {
+                            chat_type: ChatType::TEXT,
+                            value: input.value.to_vec(),
+                            id: self.id,
+                            room_id: input.room_id.to_string(),
+                            user_id: input.user_id.to_string(),
+                        };
 
-                    let mut conn = self.db_pool.get().unwrap();
-                    let new_conversation = NewConversation {
-                        user_id: input.user_id.to_string(),
-                        room_id: input.room_id.to_string(),
-                        message: input.value.join("")
-                    };
-                    let _ = db::insert_new_conversation(&mut conn, new_conversation);
-                    let msg = serde_json::to_string(&chat_msg).unwrap();
-                    self.addr.do_send(server::ClientMessage {
-                        id: self.id,
-                        msg,
-                        room: self.room.clone(),
-                    })
+                        let mut conn = self.db_pool.get().unwrap();
+                        let new_conversation = NewConversation {
+                            user_id: input.user_id.to_string(),
+                            room_id: input.room_id.to_string(),
+                            message: input.value.join(""),
+                        };
+                        let _ = db::insert_new_conversation(&mut conn, new_conversation);
+                        let msg = serde_json::to_string(&chat_msg).unwrap();
+                        self.addr.do_send(server::ClientMessage {
+                            id: self.id,
+                            msg,
+                            room: self.room.clone(),
+                        })
+                    }
+                    _ => {}
                 }
             }
             ws::Message::Binary(_) => println!("Unsupported binary"),
