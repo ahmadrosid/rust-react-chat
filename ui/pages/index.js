@@ -6,7 +6,7 @@ import Conversation from '../components/conversation'
 import Login from '../components/login'
 import useConversations from '../libs/useConversation'
 import useLocalStorage from '../libs/useLocalStorage'
-import useWebsocket from '../libs/websocket'
+import useWebsocket from '../libs/useWebsocket'
 
 export default function Home() {
   const [room, setSelectedRoom] = useState(null);
